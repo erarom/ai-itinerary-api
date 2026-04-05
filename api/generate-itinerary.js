@@ -15,28 +15,22 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Missing GEMINI_API_KEY" });
   }
 
-  const { destination, days, preferences } = req.body || {};
+  const { birthDate, birthTime } = req.body || {};
 
   if (
-    typeof destination !== "string" ||
-    !destination.trim() ||
-    typeof days !== "number" ||
-    !Number.isInteger(days) ||
-    days < 1 ||
-    days > 14 ||
-    !Array.isArray(preferences) ||
-    preferences.length === 0 ||
-    preferences.some((item) => typeof item !== "string")
+    typeof birthDate !== "string" ||
+    !birthDate.trim() ||
+    typeof birthTime !== "string" ||
+    !birthTime.trim()
   ) {
     return res.status(400).json({
-      error: "Invalid request body. Expected destination:string, days:int(1-14), preferences:string[]"
+      error: "Invalid request body. Expected birthDate:string and birthTime:string"
     });
   }
 
   const prompt = buildPrompt({
-    destination: destination.trim(),
-    days,
-    preferences
+    birthDate: birthDate.trim(),
+    birthTime: birthTime.trim()
   });
 
   try {
@@ -88,7 +82,7 @@ export default async function handler(req, res) {
       });
     }
 
-    const validationError = validateItinerary(parsed, days);
+    const validationError = validateItinerary(parsed);
 
     if (validationError) {
       return res.status(500).json({
@@ -106,9 +100,12 @@ export default async function handler(req, res) {
   }
 }
 
-function buildPrompt({ destination, days, preferences }) {
+function buildPrompt({ birthDate, birthTime }) {
   return `
-You are a travel itinerary generator.
+You are an astrology-based travel planner.
+Analyze the user's birth date and birth time.
+Choose the best destination, the ideal number of travel days, the travel mood, and create a detailed day-by-day itinerary.
+
 Return ONLY valid JSON.
 Do not use markdown.
 Do not add explanations before or after the JSON.
@@ -116,6 +113,9 @@ Do not add explanations before or after the JSON.
 JSON schema:
 {
   "destination": "string",
+  "astrologySummary": "string",
+  "travelMood": "string",
+  "cosmicTip": "string",
   "days": [
     {
       "day": 1,
@@ -133,15 +133,16 @@ JSON schema:
 }
 
 Rules:
-- Generate exactly ${days} days.
+- You must choose the destination yourself based on the astrological profile.
+- You must choose the ideal trip duration yourself.
+- Create between 2 and 5 days.
 - Include exactly 3 activities per day.
-- Keep descriptions concise.
-- Match the user's preferences when possible.
-- If unsure, return empty arrays instead of extra text.
+- Make the itinerary emotionally aligned with the astrological tone.
+- Keep descriptions concise but specific.
 
-User request:
-Destination: ${destination}
-Preferences: ${preferences.join(", ")}
+User birth details:
+Birth date: ${birthDate}
+Birth time: ${birthTime}
 `;
 }
 
@@ -156,17 +157,20 @@ function extractJSONObject(text) {
   return text.slice(start, end + 1).trim();
 }
 
-function validateItinerary(data, expectedDays) {
+function validateItinerary(data) {
   if (!data || typeof data !== "object") {
     return "Response is not an object";
   }
 
-  if (typeof data.destination !== "string" || !Array.isArray(data.days)) {
+  if (
+    typeof data.destination !== "string" ||
+    !Array.isArray(data.days)
+  ) {
     return "Missing destination or days";
   }
 
-  if (data.days.length !== expectedDays) {
-    return "Unexpected number of days";
+  if (data.days.length < 2 || data.days.length > 5) {
+    return "The itinerary must contain between 2 and 5 days";
   }
 
   for (const day of data.days) {
