@@ -8,11 +8,11 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Only POST allowed" });
+    return res.status(405).json({ error: "Sadece POST destekleniyor" });
   }
 
   if (!process.env.GEMINI_API_KEY) {
-    return res.status(500).json({ error: "Missing GEMINI_API_KEY" });
+    return res.status(500).json({ error: "GEMINI_API_KEY eksik" });
   }
 
   const { birthDate, birthTime } = req.body || {};
@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     !birthTime.trim()
   ) {
     return res.status(400).json({
-      error: "Invalid request body. Expected birthDate:string and birthTime:string"
+      error: "Gecersiz istek. birthDate ve birthTime zorunlu."
     });
   }
 
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       return res.status(response.status).json({
-        error: "Gemini request failed",
+        error: "Gemini istegi basarisiz",
         details: data
       });
     }
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
 
     if (!text) {
       return res.status(500).json({
-        error: "Empty AI response",
+        error: "AI bos cevap dondu",
         details: data
       });
     }
@@ -77,7 +77,7 @@ export default async function handler(req, res) {
       parsed = JSON.parse(jsonText);
     } catch {
       return res.status(500).json({
-        error: "AI returned invalid JSON",
+        error: "AI gecerli JSON dondurmedi",
         rawText: text
       });
     }
@@ -94,7 +94,7 @@ export default async function handler(req, res) {
     return res.status(200).json(parsed);
   } catch (error) {
     return res.status(500).json({
-      error: "Internal server error",
+      error: "Sunucu hatasi",
       details: error.message
     });
   }
@@ -102,15 +102,15 @@ export default async function handler(req, res) {
 
 function buildPrompt({ birthDate, birthTime }) {
   return `
-You are an astrology-based travel planner.
-Analyze the user's birth date and birth time.
-Choose the best destination, the ideal number of travel days, the travel mood, and create a detailed day-by-day itinerary.
+Sen astroloji temelli bir seyahat planlayicisisin.
+Kullanicinin dogum tarihi ve dogum saatini analiz et.
+Bu profile gore en uygun sehri, ideal kac gunluk tatil gerektigini, seyahat enerjisini ve gun gun detayli gezi planini sec.
 
-Return ONLY valid JSON.
-Do not use markdown.
-Do not add explanations before or after the JSON.
+Sadece gecerli JSON dondur.
+Markdown kullanma.
+JSON disinda aciklama yazma.
 
-JSON schema:
+JSON semasi:
 {
   "destination": "string",
   "astrologySummary": "string",
@@ -132,17 +132,17 @@ JSON schema:
   ]
 }
 
-Rules:
-- You must choose the destination yourself based on the astrological profile.
-- You must choose the ideal trip duration yourself.
-- Create between 2 and 5 days.
-- Include exactly 3 activities per day.
-- Make the itinerary emotionally aligned with the astrological tone.
-- Keep descriptions concise but specific.
+Kurallar:
+- Sehri sen sec.
+- Kac gunluk kacis gerektigini sen sec.
+- 2 ile 5 gun arasinda plan olustur.
+- Her gun tam olarak 3 aktivite olsun.
+- Plan astrolojik tona duygusal olarak uyumlu olsun.
+- Aciklamalar kisa ama somut olsun.
 
-User birth details:
-Birth date: ${birthDate}
-Birth time: ${birthTime}
+Kullanici bilgileri:
+Dogum tarihi: ${birthDate}
+Dogum saati: ${birthTime}
 `;
 }
 
@@ -159,18 +159,18 @@ function extractJSONObject(text) {
 
 function validateItinerary(data) {
   if (!data || typeof data !== "object") {
-    return "Response is not an object";
+    return "Yanit bir obje degil";
   }
 
   if (
     typeof data.destination !== "string" ||
     !Array.isArray(data.days)
   ) {
-    return "Missing destination or days";
+    return "destination veya days alani eksik";
   }
 
   if (data.days.length < 2 || data.days.length > 5) {
-    return "The itinerary must contain between 2 and 5 days";
+    return "Plan 2 ile 5 gun arasinda olmali";
   }
 
   for (const day of data.days) {
@@ -179,11 +179,11 @@ function validateItinerary(data) {
       typeof day.title !== "string" ||
       !Array.isArray(day.activities)
     ) {
-      return "Invalid day structure";
+      return "Gun yapisi gecersiz";
     }
 
     if (day.activities.length !== 3) {
-      return "Each day must contain exactly 3 activities";
+      return "Her gun tam olarak 3 aktivite icermeli";
     }
 
     for (const activity of day.activities) {
@@ -193,7 +193,7 @@ function validateItinerary(data) {
         typeof activity.description !== "string" ||
         typeof activity.category !== "string"
       ) {
-        return "Invalid activity structure";
+        return "Aktivite yapisi gecersiz";
       }
     }
   }
